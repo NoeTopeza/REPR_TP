@@ -24,15 +24,17 @@ out vec3 vWsNormal;
 struct Camera
 {
   mat4 WsToCs; // World-Space to Clip-Space (proj * view)
+  vec3 position;
 };
 uniform Camera uCamera;
-in vec3 cameraPosition;
 
-void
-main()
+out vec3 viewDirection;
+
+void main()
 {
   vec4 positionLocal = vec4(in_position, 1.0);
   gl_Position = uCamera.WsToCs * positionLocal;
   vWsNormal = in_normal;
+  viewDirection = uCamera.position - in_position;
 }
 `;
