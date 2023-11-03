@@ -1,6 +1,8 @@
 export default `
 precision highp float;
 
+in vec3 vWsNormal;
+
 out vec4 outFragColor;
 
 struct Material
@@ -24,6 +26,8 @@ main()
 {
   // **DO NOT** forget to do all your computation in linear space.
   vec3 albedo = sRGBToLinear(vec4(uMaterial.albedo, 1.0)).rgb;
+
+  albedo = normalize(vWsNormal) * 0.5 + 0.5;
 
   // **DO NOT** forget to apply gamma correction as last step.
   outFragColor.rgba = LinearTosRGB(vec4(albedo, 1.0));

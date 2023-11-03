@@ -6,6 +6,7 @@ import { GLContext } from './gl';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
+import { SphereGeometry } from './geometries/sphere';
 
 interface GUIProperties {
   albedo: number[];
@@ -25,7 +26,7 @@ class Application {
   private _context: GLContext;
 
   private _shader: PBRShader;
-  private _geometry: TriangleGeometry;
+  private _geometry: SphereGeometry;
   private _uniforms: Record<string, UniformType | Texture>;
 
   private _textureExample: Texture2D<HTMLElement> | null;
@@ -50,7 +51,7 @@ class Application {
     this._mouseClicked = false;
     this._mouseCurrentPosition = { x: 0, y: 0 };
 
-    this._geometry = new TriangleGeometry();
+    this._geometry = new SphereGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
       'uCamera.WsToCs': mat4.create(),
@@ -128,10 +129,13 @@ class Application {
     let WsToCs = this._uniforms['uCamera.WsToCs'] as mat4;
     mat4.multiply(WsToCs, this._camera.computeProjection(aspect), this._camera.computeView());
 
+    // Set the camera position.
+    this._uniforms['uCamera.position'] = this._camera.position;
+
     // **Note**: if you want to modify the position of the geometry, you will
     // need to add a model matrix, corresponding to the mesh's matrix.
 
-    // Draws the triangle.
+    // Draws the object.
     this._context.draw(this._geometry, this._shader, this._uniforms);
   }
 
