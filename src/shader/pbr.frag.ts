@@ -11,6 +11,8 @@ out vec4 outFragColor;
 struct Material
 {
   vec3 albedo;
+  float metallic;
+  float roughness;
 };
 uniform Material uMaterial;
 
@@ -51,6 +53,7 @@ float normal_distribution_ggx(vec3 n, vec3 h, float a)
 
 float geometry_schlick(vec3 n, vec3 v, vec3 l, float k)
 {
+  k = ((k + 1.0) * (k + 1.0)) / 8.0;
   float nDotV = max(dot(n, v), 0.0);
   float nDotL = max(dot(n, l), 0.0);
   float nDotV2 = nDotV * nDotV;
@@ -81,29 +84,29 @@ main()
   // float specular = pow(NdotH, 100.0);
 
   // albedo = diffuse + specular;
-
+  vec3 normal = normalize(vWsNormal);
   vec3 irradiance = vec3(0.0);
 
   // gotta iterate over every light later
-  vec3 kS = FresnelShlick(vec3(0.04), normalize(viewDirection), lightDirection);  // F
+  vec3 kS = FresnelShlick(vec3(0.04), viewDirection, lightDirection);  // F
 
   vec3 halfVector = normalize(lightDirection + viewDirection);
-  float G = geometry_schlick(vWsNormal, normalize(viewDirection), lightDirection, 0.5);
+  float G = geometry_schlick(normal, viewDirection, lightDirection, uMaterial.roughness);  // G
 
-  float D = normal_distribution_ggx(vWsNormal, halfVector, 0.5);
-  float denominator = 4.0 * max(dot(vWsNormal, viewDirection), 0.0) * max(dot(vWsNormal, lightDirection), 0.0);
+  float D = normal_distribution_ggx(normal, halfVector, uMaterial.roughness);  // D
+  float denominator = 4.0 * max(dot(normal, viewDirection), 0.0) * max(dot(normal, lightDirection), 0.0);
   vec3 specularBDRFEval = (kS * G * D) / denominator; // GD
   
   vec3 diffuseBDRFEval = (vec3(1, 1, 1) - kS) * albedo / PI;
-  // diffuseBDRFEval *= (1 - uMaterial.metallic);
+  diffuseBDRFEval *= (1.0 - uMaterial.metallic);
 
-  irradiance += (diffuseBDRFEval + specularBDRFEval)  * max(dot(vWsNormal, lightDirection), 0.0);  // * uLight.color * uLight.intensity
+  irradiance += (diffuseBDRFEval + specularBDRFEval) * uLight.intensity * max(dot(normal, lightDirection), 0.0);  // * uLight.color 
 
   // visualize normal
-  //albedo = normalize(vWsNormal) * 0.5 + 0.5;
+  //albedo = normal * 0.5 + 0.5;
 
   // visualize view direction
-  // albedo = normalize(viewDirection) * 0.5 + 0.5;
+  // albedo = viewDirection * 0.5 + 0.5;
 
   // **DO NOT** forget to apply gamma correction as last step.
   outFragColor.rgba = LinearTosRGB(vec4(irradiance, 1.0));

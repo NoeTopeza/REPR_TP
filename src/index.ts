@@ -11,6 +11,9 @@ import { PointLight } from './lights/lights';
 interface GUIProperties {
   albedo: number[];
   coordinate: number[];
+  metallic: number;
+  roughness: number;
+  light_strength: number;
 }
 
 /**
@@ -57,6 +60,8 @@ class Application {
     this._geometry = new SphereGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
+      'uMaterial.metallic': 0.0,
+      'uMaterial.roughness': 0.5,
       'uCamera.position': this._camera.position,
       'uLight.position': this._light.positionWS,
       'uLight.color': vec3.fromValues(1.0, 1.0, 1.0),
@@ -69,7 +74,10 @@ class Application {
 
     this._guiProperties = {
       albedo: [255, 255, 255],
-      coordinate: [0, 0, 0]  // position x , y changeable on the fly
+      coordinate: [0, 0, 0],  // position x , y changeable on the fly
+      metallic: 0.0,
+      roughness: 0.5,
+      light_strength: 1.0
     };
 
     this._createGUI();
@@ -139,6 +147,11 @@ class Application {
       2 // props.coordinate[2] / 255
     );
 
+    // Set the metallic and roughness properties from the GUI.
+    this._uniforms['uMaterial.metallic'] = props.metallic;
+    this._uniforms['uMaterial.roughness'] = props.roughness;
+    this._uniforms['uLight.intensity'] = props.light_strength;
+
     // Sets the view projection matrix.
     const aspect = this._context.gl.drawingBufferWidth / this._context.gl.drawingBufferHeight;
     let WsToCs = this._uniforms['uCamera.WsToCs'] as mat4;
@@ -151,9 +164,9 @@ class Application {
 
 
     // Set the light position.
-    this._uniforms['uLight.position'] = this._light.positionWS;
+    // this._uniforms['uLight.position'] = this._light.positionWS;
     this._uniforms['uLight.color'] = this._light.color;
-    this._uniforms['uLight.intensity'] = this._light.intensity;
+    //this._uniforms['uLight.intensity'] = this._light.intensity;
 
     // **Note**: if you want to modify the position of the geometry, you will
     // need to add a model matrix, corresponding to the mesh's matrix.
@@ -177,6 +190,9 @@ class Application {
     const gui = new GUI();
     gui.addColor(this._guiProperties, 'albedo');
     gui.addColor(this._guiProperties, 'coordinate');
+    gui.add(this._guiProperties, 'metallic', 0.0, 1.0);
+    gui.add(this._guiProperties, 'roughness', 0.0, 1.0);
+    gui.add(this._guiProperties, 'light_strength', 0.0, 5.0);
     return gui;
   }
 
