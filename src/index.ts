@@ -1,15 +1,16 @@
 import { GUI } from 'dat.gui';
-import { mat4, vec3, quat } from 'gl-matrix';
+import { mat4, vec3, quat, vec2 } from 'gl-matrix';
 import { Camera } from './camera';
-import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
 import { SphereGeometry } from './geometries/sphere';
+import { PointLight } from './lights/lights';
 
 interface GUIProperties {
   albedo: number[];
+  coordinate: number[];
 }
 
 /**
@@ -32,6 +33,7 @@ class Application {
   private _textureExample: Texture2D<HTMLElement> | null;
 
   private _camera: Camera;
+  private _light: PointLight;
 
   private _mouseClicked: boolean;
   private _mouseCurrentPosition: { x: number, y: number };
@@ -47,13 +49,18 @@ class Application {
     this._context = new GLContext(canvas);
     this._camera = new Camera();
     vec3.set(this._camera.position, 0.0, 0.0, 2.0);
-
+    this._light = new PointLight();
+    vec3.set(this._light.positionWS, 0.0, 0.0, 2.0);
     this._mouseClicked = false;
     this._mouseCurrentPosition = { x: 0, y: 0 };
 
     this._geometry = new SphereGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
+      'uCamera.position': this._camera.position,
+      'uLight.position': this._light.positionWS,
+      'uLight.color': vec3.fromValues(1.0, 1.0, 1.0),
+      'uLight.intensity': 1.0,
       'uCamera.WsToCs': mat4.create(),
     };
 
@@ -61,7 +68,8 @@ class Application {
     this._textureExample = null;
 
     this._guiProperties = {
-      albedo: [255, 255, 255]
+      albedo: [255, 255, 255],
+      coordinate: [0, 0, 0]  // position x , y changeable on the fly
     };
 
     this._createGUI();
@@ -124,13 +132,28 @@ class Application {
       props.albedo[2] / 255
     );
 
+    vec3.set(
+      this._uniforms['uLight.position'] as vec3,
+      props.coordinate[0] / 255,
+      props.coordinate[1] / 255,
+      2 // props.coordinate[2] / 255
+    );
+
     // Sets the view projection matrix.
     const aspect = this._context.gl.drawingBufferWidth / this._context.gl.drawingBufferHeight;
     let WsToCs = this._uniforms['uCamera.WsToCs'] as mat4;
     mat4.multiply(WsToCs, this._camera.computeProjection(aspect), this._camera.computeView());
 
     // Set the camera position.
+    // this._camera.position[0] = props.coordinate[0];
+    // this._camera.position[1] = props.coordinate[1];
     this._uniforms['uCamera.position'] = this._camera.position;
+
+
+    // Set the light position.
+    this._uniforms['uLight.position'] = this._light.positionWS;
+    this._uniforms['uLight.color'] = this._light.color;
+    this._uniforms['uLight.intensity'] = this._light.intensity;
 
     // **Note**: if you want to modify the position of the geometry, you will
     // need to add a model matrix, corresponding to the mesh's matrix.
@@ -153,6 +176,7 @@ class Application {
   private _createGUI(): GUI {
     const gui = new GUI();
     gui.addColor(this._guiProperties, 'albedo');
+    gui.addColor(this._guiProperties, 'coordinate');
     return gui;
   }
 

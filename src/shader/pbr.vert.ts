@@ -3,6 +3,7 @@ export default `
 precision highp float;
 
 in vec3 in_position;
+out vec3 out_position;
 in vec3 in_normal;
 #ifdef USE_UV
   in vec2 in_uv;
@@ -32,6 +33,7 @@ out vec3 viewDirection;
 
 void main()
 {
+  out_position = in_position;
   vec4 positionLocal = vec4(in_position, 1.0);
   gl_Position = uCamera.WsToCs * positionLocal;
   vWsNormal = in_normal;
