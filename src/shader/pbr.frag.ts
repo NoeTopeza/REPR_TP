@@ -1,12 +1,14 @@
 export default `
 precision highp float;
 
-#define PI 3.1415926535897932384626433832795
+#define PI 3.14
 
 in vec3 vWsNormal;
 in vec3 viewDirection;
 in vec3 out_position;
 out vec4 outFragColor;
+
+uniform sampler2D uTexture;
 
 struct Material
 {
@@ -65,8 +67,15 @@ float geometry_schlick(vec3 n, vec3 v, vec3 l, float k)
   return ggx1 * ggx2;
 }
 
-void
-main()
+vec2 cartesianToEquirectangular(vec3 dir)
+{
+  float u = atan(dir.z, dir.x) / (2.0 * PI) + 0.5;
+  float v = asin(dir.y) / PI + 0.5;
+  return vec2(u, v);
+}
+
+
+void main()
 {
   // **DO NOT** forget to do all your computation in linear space.
   vec3 albedo = sRGBToLinear(vec4(uMaterial.albedo, 1.0)).rgb;
@@ -88,20 +97,25 @@ main()
   vec3 irradiance = vec3(0.0);
 
   // gotta iterate over every light later
-  vec3 kS = FresnelShlick(vec3(0.04), viewDirection, lightDirection);  // F
-
   vec3 halfVector = normalize(lightDirection + viewDirection);
+  vec3 kS = FresnelShlick(vec3(0.04), halfVector, lightDirection);  // F
+
   float G = geometry_schlick(normal, viewDirection, lightDirection, uMaterial.roughness);  // G
 
   float D = normal_distribution_ggx(normal, halfVector, uMaterial.roughness);  // D
-  float denominator = 4.0 * max(dot(normal, viewDirection), 0.0) * max(dot(normal, lightDirection), 0.0);
+  float denominator = 4.0 * max(dot(normal, viewDirection), 0.00001) * max(dot(normal, lightDirection), 0.00001);
   vec3 specularBDRFEval = (kS * G * D) / denominator; // GD
   
   vec3 diffuseBDRFEval = (vec3(1, 1, 1) - kS) * albedo / PI;
   diffuseBDRFEval *= (1.0 - uMaterial.metallic);
 
-  irradiance += (diffuseBDRFEval + specularBDRFEval) * uLight.intensity * max(dot(normal, lightDirection), 0.0);  // * uLight.color 
+  vec4 texel = texture(uTexture, cartesianToEquirectangular(normal));
+  vec4 linear_texel = sRGBToLinear(texel);
+  vec3 diffuseBDRFEval_text = albedo * linear_texel.rgb * linear_texel.a * (1.0 - uMaterial.metallic) / PI;
 
+  // irradiance += (diffuseBDRFEval + specularBDRFEval) * uLight.intensity * max(dot(normal, lightDirection), 0.0);  // * uLight.color 
+  irradiance += diffuseBDRFEval_text; 
+  // 
   // visualize normal
   //albedo = normal * 0.5 + 0.5;
 

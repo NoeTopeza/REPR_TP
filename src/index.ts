@@ -33,7 +33,7 @@ class Application {
   private _geometry: SphereGeometry;
   private _uniforms: Record<string, UniformType | Texture>;
 
-  private _textureExample: Texture2D<HTMLElement> | null;
+  private _textureDiffuse: Texture2D<HTMLElement> | null;
 
   private _camera: Camera;
   private _light: PointLight;
@@ -70,7 +70,7 @@ class Application {
     };
 
     this._shader = new PBRShader();
-    this._textureExample = null;
+    this._textureDiffuse = null;
 
     this._guiProperties = {
       albedo: [255, 255, 255],
@@ -91,13 +91,14 @@ class Application {
     this._context.compileProgram(this._shader);
 
     // Example showing how to load a texture and upload it to GPU.
-    this._textureExample = await Texture2D.load(
-      'assets/ggx-brdf-integrated.png'
+    this._textureDiffuse = await Texture2D.load(
+      'assets/env/Alexs_Apt_2k-diffuse-RGBM.png'
     );
-    if (this._textureExample !== null) {
-      this._context.uploadTexture(this._textureExample);
+    if (this._textureDiffuse !== null) {
+      this._context.uploadTexture(this._textureDiffuse);
       // You can then use it directly as a uniform:
-      // ```uniforms.myTexture = this._textureExample;```
+      //uniforms.myTexture = this._textureExample;
+      this._uniforms['uTextureDiffuse'] = this._textureDiffuse;
     }
 
     // Event handlers (mouse and keyboard)
@@ -142,8 +143,8 @@ class Application {
 
     vec3.set(
       this._uniforms['uLight.position'] as vec3,
-      props.coordinate[0] / 255,
-      props.coordinate[1] / 255,
+      (props.coordinate[0] / 255 - 0.5) * 2,
+      (props.coordinate[1] / 255 - 0.5) * 2,
       2 // props.coordinate[2] / 255
     );
 
