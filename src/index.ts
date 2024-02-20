@@ -1,5 +1,5 @@
 import { GUI } from 'dat.gui';
-import { mat4, vec3, quat, vec2 } from 'gl-matrix';
+import { mat4, vec3, quat} from 'gl-matrix';
 import { Camera } from './camera';
 import { GLContext } from './gl';
 import { PBRShader } from './shader/pbr-shader';
@@ -11,9 +11,10 @@ import { PointLight } from './lights/lights';
 interface GUIProperties {
   albedo: number[];
   coordinate: number[];
+  light_strength: number;
+  manual_settings: boolean;
   metallic: number;
   roughness: number;
-  light_strength: number;
 }
 
 /**
@@ -34,6 +35,7 @@ class Application {
   private _uniforms: Record<string, UniformType | Texture>;
 
   private _textureDiffuse: Texture2D<HTMLElement> | null;
+  private _textureSpecular: Texture2D<HTMLElement> | null;
 
   private _camera: Camera;
   private _light: PointLight;
@@ -51,9 +53,9 @@ class Application {
   constructor(canvas: HTMLCanvasElement) {
     this._context = new GLContext(canvas);
     this._camera = new Camera();
-    vec3.set(this._camera.position, 0.0, 0.0, 2.0);
+    vec3.set(this._camera.position, 2.5, 2.5, 12.0);
     this._light = new PointLight();
-    vec3.set(this._light.positionWS, 0.0, 0.0, 2.0);
+    vec3.set(this._light.positionWS, 0.0, 0.0, 3.0);
     this._mouseClicked = false;
     this._mouseCurrentPosition = { x: 0, y: 0 };
 
@@ -67,17 +69,20 @@ class Application {
       'uLight.color': vec3.fromValues(1.0, 1.0, 1.0),
       'uLight.intensity': 1.0,
       'uCamera.WsToCs': mat4.create(),
+      'modelPosition': mat4.create()
     };
 
     this._shader = new PBRShader();
     this._textureDiffuse = null;
+    this._textureSpecular = null;
 
     this._guiProperties = {
       albedo: [255, 255, 255],
       coordinate: [0, 0, 0],  // position x , y changeable on the fly
+      light_strength: 1.0,
+      manual_settings: false,
       metallic: 0.0,
       roughness: 0.5,
-      light_strength: 1.0
     };
 
     this._createGUI();
@@ -96,9 +101,15 @@ class Application {
     );
     if (this._textureDiffuse !== null) {
       this._context.uploadTexture(this._textureDiffuse);
-      // You can then use it directly as a uniform:
-      //uniforms.myTexture = this._textureExample;
       this._uniforms['uTextureDiffuse'] = this._textureDiffuse;
+    }
+
+    this._textureSpecular = await Texture2D.load(
+      'assets/env/Alexs_Apt_2k-specular-RGBM.png'
+    );
+    if (this._textureSpecular !== null) {
+      this._context.uploadTexture(this._textureSpecular);
+      this._uniforms['uTextureSpecular'] = this._textureSpecular;
     }
 
     // Event handlers (mouse and keyboard)
@@ -143,8 +154,8 @@ class Application {
 
     vec3.set(
       this._uniforms['uLight.position'] as vec3,
-      (props.coordinate[0] / 255 - 0.5) * 2,
-      (props.coordinate[1] / 255 - 0.5) * 2,
+      (props.coordinate[0] / 255 - 0.5) * 12,
+      (props.coordinate[1] / 255 - 0.5) * 12,
       2 // props.coordinate[2] / 255
     );
 
@@ -172,8 +183,19 @@ class Application {
     // **Note**: if you want to modify the position of the geometry, you will
     // need to add a model matrix, corresponding to the mesh's matrix.
 
-    // Draws the object.
-    this._context.draw(this._geometry, this._shader, this._uniforms);
+    // draw 9 spheres in a 5 x 5 grid
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j< 5; j++) {
+        let modelPosition = mat4.create();
+        mat4.translate(modelPosition, modelPosition, vec3.fromValues(i*2 - 1, j*2 - 1, 0));
+        if (!props.manual_settings) {
+            this._uniforms['uMaterial.metallic'] = i / 4
+            this._uniforms['uMaterial.roughness'] = j / 4 + 0.05;
+        }
+        this._uniforms['modelPosition'] = modelPosition;
+        this._context.draw(this._geometry, this._shader, this._uniforms);
+      }
+    }
   }
 
   /**
@@ -191,9 +213,10 @@ class Application {
     const gui = new GUI();
     gui.addColor(this._guiProperties, 'albedo');
     gui.addColor(this._guiProperties, 'coordinate');
+    gui.add(this._guiProperties, 'light_strength', 0.0, 5.0);
+    gui.add(this._guiProperties, 'manual_settings');
     gui.add(this._guiProperties, 'metallic', 0.0, 1.0);
     gui.add(this._guiProperties, 'roughness', 0.0, 1.0);
-    gui.add(this._guiProperties, 'light_strength', 0.0, 5.0);
     return gui;
   }
 

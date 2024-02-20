@@ -28,13 +28,15 @@ struct Camera
   vec3 position;
 };
 uniform Camera uCamera;
+uniform mat4 modelPosition;
 
 out vec3 viewDirection;
 
 void main()
 {
-  out_position = in_position;
   vec4 positionLocal = vec4(in_position, 1.0);
+  positionLocal = modelPosition * positionLocal;
+  out_position = positionLocal.xyz;
   gl_Position = uCamera.WsToCs * positionLocal;
   vWsNormal = in_normal;
   viewDirection = normalize(uCamera.position - in_position);
